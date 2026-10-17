@@ -1,5 +1,10 @@
 # 🇮🇷 Antigravity Unlocker — نسخه فارسی
 
+[![Version](https://img.shields.io/badge/version-v2.24.0-blue.svg)](https://github.com/EngHoseini1360/Antigravity-Unlocker-Persian/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](#)
+[![OS: Windows](https://img.shields.io/badge/OS-Windows-lightgrey.svg)](#)
+
 یک نرم‌افزار دسکتاپ مدرن، زیبا و کاملاً فارسی تحت ویندوز بر پایه **Python** و **PyQt6** با طراحی اختصاصی به سبک **Fluent / Windows 11 Dark Mode** جهت دور زدن تحریم‌های منطقه‌ای و رفع خطای ۴۰۰ («User location is not supported») در سرویس‌های هوش مصنوعی **Antigravity 2.0**، **Antigravity IDE** و ابزار خط فرمان **agy CLI**.
 
 ---
