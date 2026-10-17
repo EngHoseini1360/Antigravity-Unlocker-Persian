@@ -34,7 +34,7 @@ def is_admin() -> bool:
 
 
 def run_as_admin() -> None:
-    """درخواست ارتقا به دسترسی مدیر (UAC در ویندوز یا pkexec/sudo در لینوکس) و اجرای مجدد برنامه"""
+    """درخواست ارتقا به دسترسی مدیر (ویندوز، مک یا لینوکس) و اجرای مجدد برنامه"""
     if is_admin():
         return
 
@@ -52,8 +52,18 @@ def run_as_admin() -> None:
             1  # SW_SHOWNORMAL
         )
         sys.exit(0)
+    elif sys.platform == "darwin":
+        # در مک‌اواس با استفاده از osascript و دیالوگ سیستمی احراز هویت
+        escaped_script = script.replace('"', '\\"')
+        param_str = " ".join([f'\\"{arg}\\"' for arg in params])
+        osa_cmd = f'do shell script "\\"{sys.executable}\\" \\"{escaped_script}\\" {param_str}" with administrator privileges'
+        try:
+            subprocess.Popen(["osascript", "-e", osa_cmd])
+            sys.exit(0)
+        except Exception:
+            pass
     else:
-        # در لینوکس با pkexec برای محیط گرافیکی
+        # در لینوکس با pkexec یا sudo
         for launcher in ["pkexec", "sudo"]:
             try:
                 cmd = [launcher, sys.executable, script] + params
@@ -71,13 +81,18 @@ _RELAY_CACHE_TIME = 0.0
 
 
 def check_nrpt_rules(force: bool = False) -> Tuple[bool, str]:
-    """بررسی وضعیت قوانین تفکیک شبکه در ویندوز (NRPT) یا لینوکس"""
+    """بررسی وضعیت قوانین تفکیک شبکه در ویندوز (NRPT)، مک‌اواس یا لینوکس"""
     global _NRPT_CACHE, _NRPT_CACHE_TIME
     now = time.time()
     if not force and _NRPT_CACHE is not None and (now - _NRPT_CACHE_TIME < 10.0):
         return _NRPT_CACHE
 
-    if sys.platform != "win32":
+    if sys.platform == "darwin":
+        result = (True, "در مک‌اواس (macOS) ترافیک به صورت ایزوله از طریق متغیر AG_LS_PROXY هدایت می‌شود.")
+        _NRPT_CACHE = result
+        _NRPT_CACHE_TIME = now
+        return result
+    elif sys.platform != "win32":
         result = (True, "در لینوکس ترافیک به صورت ایزوله از طریق متغیر AG_LS_PROXY هدایت می‌شود.")
         _NRPT_CACHE = result
         _NRPT_CACHE_TIME = now

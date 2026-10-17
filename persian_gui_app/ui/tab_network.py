@@ -126,15 +126,23 @@ class NetworkTab(QWidget):
         self.layout.addWidget(card)
 
     def _build_nrpt_card(self):
-        """کارت قوانین تفکیک شبکه در ویندوز و لینوکس"""
-        is_win = sys.platform == "win32"
-        title = "قوانین تفکیک ویندوز (Windows DNS NRPT)" if is_win else "تفکیک شبکه در لینوکس (Linux Routing)"
-        subtitle = (
-            "تفکیک اختصاصی دامنه‌های cloudcode-pa.googleapis.com بدون دستکاری کل اینترنت سیستم"
-            if is_win else
-            "هدایت ایزوله ترافیک هوش مصنوعی بدون دستکاری اینترنت کلی سیستم"
-        )
-        icon = "🪟" if is_win else "🐧"
+        """کارت قوانین تفکیک شبکه در ویندوز، مک و لینوکس"""
+        if sys.platform == "win32":
+            title = "قوانین تفکیک ویندوز (Windows DNS NRPT)"
+            subtitle = "تفکیک اختصاصی دامنه‌های cloudcode-pa.googleapis.com بدون دستکاری کل اینترنت سیستم"
+            icon = "🪟"
+            desc_text = "قوانین NRPT باعث می‌شود فقط ترافیک مربوط به هوش مصنوعی گوگل از مسیر ویژه عبور کند و مرورگرها و بازی‌های شما کاملاً عادی کار کنند."
+        elif sys.platform == "darwin":
+            title = "تفکیک شبکه در مک‌اواس (macOS Isolated Routing)"
+            subtitle = "هدایت ایزوله ترافیک هوش مصنوعی گوگل از مسیر AG_LS_PROXY در مکینتاش"
+            icon = "🍎"
+            desc_text = "در سیستم‌عامل macOS با تنظیم خودکار AG_LS_PROXY، تنها ترافیک Antigravity به پروکسی هدایت شده و سافاری، کروم و بقیه سیستم دست‌نخورده باقی می‌مانند."
+        else:
+            title = "تفکیک شبکه در لینوکس (Linux Routing)"
+            subtitle = "هدایت ایزوله ترافیک هوش مصنوعی بدون دستکاری اینترنت کلی سیستم"
+            icon = "🐧"
+            desc_text = "در لینوکس با پچ متغیر ایزوله AG_LS_PROXY، تنها ترافیک Antigravity از مسیر تعیین‌شده عبور کرده و سایر برنامه‌ها عادی کار می‌کنند."
+
         card = CardWidget(title, subtitle, icon)
 
         row = QHBoxLayout()
@@ -149,11 +157,6 @@ class NetworkTab(QWidget):
 
         card.add_layout(row)
 
-        desc_text = (
-            "قوانین NRPT باعث می‌شود فقط ترافیک مربوط به هوش مصنوعی گوگل از مسیر ویژه عبور کند و مرورگرها و بازی‌های شما کاملاً عادی کار کنند."
-            if is_win else
-            "در لینوکس با پچ متغیر ایزوله AG_LS_PROXY، تنها ترافیک Antigravity از مسیر تعیین‌شده عبور کرده و سایر برنامه‌ها عادی کار می‌کنند."
-        )
         self.lbl_nrpt_desc = QLabel(desc_text)
         self.lbl_nrpt_desc.setStyleSheet("color: #64748b; font-size: 11px;")
         self.lbl_nrpt_desc.setWordWrap(True)

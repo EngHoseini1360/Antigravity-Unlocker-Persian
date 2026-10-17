@@ -10,7 +10,7 @@ from .settings_manager import load_settings
 
 
 def get_standard_candidate_paths() -> List[Path]:
-    """مسیرهای متداول و استاندارد نصب Antigravity در ویندوز و لینوکس"""
+    """مسیرهای متداول و استاندارد نصب Antigravity در ویندوز، مک‌اواس و لینوکس"""
     candidates = []
     if sys.platform == "win32":
         local_appdata = os.environ.get("LOCALAPPDATA", "")
@@ -28,6 +28,22 @@ def get_standard_candidate_paths() -> List[Path]:
             Path(local_appdata) / "Antigravity IDE",
             Path(local_appdata) / "agy" / "bin",
             Path(local_appdata) / "agy",
+        ])
+    elif sys.platform == "darwin":
+        # مسیرهای استاندارد macOS (Intel و Apple Silicon M1/M2/M3/M4)
+        home = Path.home()
+        candidates.extend([
+            Path("/Applications/Antigravity.app"),
+            Path("/Applications/Antigravity IDE.app"),
+            home / "Applications" / "Antigravity.app",
+            home / "Applications" / "Antigravity IDE.app",
+            home / "Library" / "Application Support" / "Antigravity",
+            home / "Library" / "Application Support" / "Antigravity IDE",
+            home / "Library" / "Application Support" / "Code" / "User",
+            home / ".antigravity",
+            home / ".local" / "bin",
+            Path("/usr/local/bin"),
+            Path("/opt/homebrew/bin"),
         ])
     else:
         # مسیرهای متداول توزیع‌های مختلف لینوکس (Ubuntu, Debian, Fedora, Arch, ...)
@@ -54,13 +70,19 @@ def get_standard_candidate_paths() -> List[Path]:
 
 
 def is_valid_install_root(path: Path) -> bool:
-    """بررسی اینکه آیا مسیر داده شده یک پوشه معتبر نصب Antigravity است"""
+    """بررسی اینکه آیا مسیر داده شده یک پوشه معتبر نصب Antigravity است (ویندوز، مک، لینوکس)"""
     if not path.exists() or not path.is_dir():
         return False
 
     path_str = str(path).lower()
     if "c:\\windows" in path_str or "/proc" in path_str or "/sys" in path_str:
         return False
+
+    # بررسی پکیج .app مکینتاش
+    contents = path / "Contents"
+    if contents.exists() and contents.is_dir():
+        if (contents / "Resources").exists() or (contents / "MacOS").exists():
+            return True
 
     resources = path / "resources"
     if resources.exists() and resources.is_dir():
@@ -79,42 +101,65 @@ def is_valid_install_root(path: Path) -> bool:
 
 
 def get_binary_targets_for_install(install_root: Path) -> List[Path]:
-    """یافتن تمام فایل‌های اجرایی باینری Language Server و CLI در پوشه نصب (ویندوز و لینوکس)"""
+    """یافتن تمام فایل‌های اجرایی باینری Language Server و CLI در پوشه نصب (ویندوز، مک، لینوکس)"""
     targets = []
     
-    # 1. agy executable
-    for agy_name in ["agy.exe", "agy"]:
-        agy_bin = install_root / agy_name
-        if agy_bin.is_file() and agy_bin not in targets:
-            targets.append(agy_bin)
+    # پوشه پایه منابع (برای مک‌اواس در Contents قرار دارد)
+    base_dirs = [install_root]
+    if (install_root / "Contents").is_dir():
+        base_dirs.append(install_root / "Contents")
 
-    # 2. Desktop language server
-    res_bin_dir = install_root / "resources" / "bin"
-    if res_bin_dir.is_dir():
-        for filename in ["language_server.exe", "language_server", "language_server_linux_x64", "language_server_windows_x64.exe"]:
-            candidate = res_bin_dir / filename
-            if candidate.is_file() and candidate not in targets:
-                targets.append(candidate)
-        try:
-            for item in res_bin_dir.glob("language_server*"):
-                if item.is_file() and not item.name.endswith((".agtmp", ".bak", ".old", ".txt", ".log")) and item not in targets:
-                    targets.append(item)
-        except Exception:
-            pass
+    for base in base_dirs:
+        # 1. agy executable
+        for agy_name in ["agy.exe", "agy"]:
+            agy_bin = base / agy_name
+            if agy_bin.is_file() and agy_bin not in targets:
+                targets.append(agy_bin)
 
-    # 3. IDE language server
-    ide_bin_dir = install_root / "resources" / "app" / "extensions" / "antigravity" / "bin"
-    if ide_bin_dir.is_dir():
-        for filename in ["language_server_windows_x64.exe", "language_server.exe", "language_server_linux_x64", "language_server"]:
-            candidate = ide_bin_dir / filename
-            if candidate.is_file() and candidate not in targets:
-                targets.append(candidate)
-        try:
-            for item in ide_bin_dir.glob("language_server*"):
-                if item.is_file() and not item.name.endswith((".agtmp", ".bak", ".old", ".txt", ".log")) and item not in targets:
-                    targets.append(item)
-        except Exception:
-            pass
+        # 2. Desktop language server
+        res_bin_dir = base / "resources" / "bin" if (base / "resources").is_dir() else base / "Resources" / "bin"
+        if res_bin_dir.is_dir():
+            for filename in [
+                "language_server.exe", "language_server",
+                "language_server_darwin_arm64", "language_server_darwin_x64",
+                "language_server_linux_x64", "language_server_windows_x64.exe"
+            ]:
+                candidate = res_bin_dir / filename
+                if candidate.is_file() and candidate not in targets:
+                    targets.append(candidate)
+            try:
+                for item in res_bin_dir.glob("language_server*"):
+                    if item.is_file() and not item.name.endswith((".agtmp", ".bak", ".old", ".txt", ".log")) and item not in targets:
+                        targets.append(item)
+            except Exception:
+                pass
+
+        # 3. IDE language server
+        ide_res = base / "resources" if (base / "resources").is_dir() else base / "Resources"
+        ide_bin_dir = ide_res / "app" / "extensions" / "antigravity" / "bin"
+        if ide_bin_dir.is_dir():
+            for filename in [
+                "language_server_darwin_arm64", "language_server_darwin_x64",
+                "language_server_windows_x64.exe", "language_server.exe",
+                "language_server_linux_x64", "language_server"
+            ]:
+                candidate = ide_bin_dir / filename
+                if candidate.is_file() and candidate not in targets:
+                    targets.append(candidate)
+            try:
+                for item in ide_bin_dir.glob("language_server*"):
+                    if item.is_file() and not item.name.endswith((".agtmp", ".bak", ".old", ".txt", ".log")) and item not in targets:
+                        targets.append(item)
+            except Exception:
+                pass
+
+        # 4. MacOS binary directory
+        macos_bin_dir = base / "MacOS"
+        if macos_bin_dir.is_dir():
+            for filename in ["Antigravity", "Antigravity IDE", "agy"]:
+                candidate = macos_bin_dir / filename
+                if candidate.is_file() and candidate not in targets:
+                    targets.append(candidate)
 
     return targets
 

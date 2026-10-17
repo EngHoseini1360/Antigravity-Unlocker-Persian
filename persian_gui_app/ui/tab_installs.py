@@ -4,6 +4,7 @@
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -159,6 +160,11 @@ class InstallCard(QFrame):
         if os.path.exists(path):
             if hasattr(os, "startfile"):
                 os.startfile(path)
+            elif sys.platform == "darwin":
+                try:
+                    subprocess.Popen(["open", path])
+                except Exception:
+                    pass
             else:
                 try:
                     subprocess.Popen(["xdg-open", path])

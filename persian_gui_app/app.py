@@ -125,9 +125,18 @@ class MainWindow(QMainWindow):
 
         # دکمه بررسی دسترسی ادمین
         is_win = sys.platform == "win32"
+        is_mac = sys.platform == "darwin"
         if not is_admin():
-            btn_title = "🛡️ اجرا با دسترسی Administrator" if is_win else "🛡️ اجرا با دسترسی Root / Admin"
-            tip_title = "برای اعمال قوانین DNS به دسترسی ادمین نیاز است." if is_win else "برای دسترسی کامل به فایل‌های سیستمی ممکن است به دسترسی root نیاز باشد."
+            if is_win:
+                btn_title = "🛡️ اجرا با دسترسی Administrator"
+                tip_title = "برای اعمال قوانین DNS به دسترسی ادمین نیاز است."
+            elif is_mac:
+                btn_title = "🛡️ احراز هویت با دسترسی Admin (مک)"
+                tip_title = "برای دسترسی کامل به فایل‌های برنامه‌ها در مک ممکن است به احراز هویت Touch ID / پسورد سیستم نیاز باشد."
+            else:
+                btn_title = "🛡️ اجرا با دسترسی Root / Admin"
+                tip_title = "برای دسترسی کامل به فایل‌های سیستمی ممکن است به دسترسی root نیاز باشد."
+
             self.btn_admin = QPushButton(btn_title)
             self.btn_admin.setToolTip(tip_title)
             self.btn_admin.setStyleSheet("""
@@ -147,7 +156,12 @@ class MainWindow(QMainWindow):
             self.btn_admin.clicked.connect(self._restart_as_admin)
             top_layout.addWidget(self.btn_admin)
         else:
-            admin_text = "🛡️ دسترسی ادمین فعال است ✓" if is_win else "🛡️ دسترسی روت (Root) فعال است ✓"
+            if is_win:
+                admin_text = "🛡️ دسترسی ادمین فعال است ✓"
+            elif is_mac:
+                admin_text = "🛡️ دسترسی مدیر مک فعال است ✓"
+            else:
+                admin_text = "🛡️ دسترسی روت (Root) فعال است ✓"
             admin_lbl = QLabel(admin_text)
             admin_lbl.setStyleSheet("color: #10b981; font-weight: bold; font-size: 13px; padding: 6px 12px;")
             top_layout.addWidget(admin_lbl)
