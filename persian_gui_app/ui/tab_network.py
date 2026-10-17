@@ -2,6 +2,7 @@
 تب تنظیمات شبکه، پیکربندی پروکسی اختصاصی، و بررسی وضعیت اتصال به سرورهای گوگل
 """
 
+import sys
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QFrame,
@@ -125,8 +126,16 @@ class NetworkTab(QWidget):
         self.layout.addWidget(card)
 
     def _build_nrpt_card(self):
-        """کارت قوانین تفکیک نام ویندوز (NRPT)"""
-        card = CardWidget("قوانین ویندوز (Windows DNS NRPT)", "تفکیک اختصاصی دامنه‌های cloudcode-pa.googleapis.com بدون دستکاری کل اینترنت سیستم", "🪟")
+        """کارت قوانین تفکیک شبکه در ویندوز و لینوکس"""
+        is_win = sys.platform == "win32"
+        title = "قوانین تفکیک ویندوز (Windows DNS NRPT)" if is_win else "تفکیک شبکه در لینوکس (Linux Routing)"
+        subtitle = (
+            "تفکیک اختصاصی دامنه‌های cloudcode-pa.googleapis.com بدون دستکاری کل اینترنت سیستم"
+            if is_win else
+            "هدایت ایزوله ترافیک هوش مصنوعی بدون دستکاری اینترنت کلی سیستم"
+        )
+        icon = "🪟" if is_win else "🐧"
+        card = CardWidget(title, subtitle, icon)
 
         row = QHBoxLayout()
         self.nrpt_badge = StatusBadge("در حال بررسی", "neutral")
@@ -140,7 +149,12 @@ class NetworkTab(QWidget):
 
         card.add_layout(row)
 
-        self.lbl_nrpt_desc = QLabel("قوانین NRPT باعث می‌شود فقط ترافیک مربوط به هوش مصنوعی گوگل از مسیر ویژه عبور کند و مرورگرها و بازی‌های شما کاملاً عادی کار کنند.")
+        desc_text = (
+            "قوانین NRPT باعث می‌شود فقط ترافیک مربوط به هوش مصنوعی گوگل از مسیر ویژه عبور کند و مرورگرها و بازی‌های شما کاملاً عادی کار کنند."
+            if is_win else
+            "در لینوکس با پچ متغیر ایزوله AG_LS_PROXY، تنها ترافیک Antigravity از مسیر تعیین‌شده عبور کرده و سایر برنامه‌ها عادی کار می‌کنند."
+        )
+        self.lbl_nrpt_desc = QLabel(desc_text)
         self.lbl_nrpt_desc.setStyleSheet("color: #64748b; font-size: 11px;")
         self.lbl_nrpt_desc.setWordWrap(True)
         card.add_widget(self.lbl_nrpt_desc)
@@ -180,9 +194,10 @@ class NetworkTab(QWidget):
     def _check_nrpt(self):
         active, msg = check_nrpt_rules()
         if active:
-            self.nrpt_badge.set_status("قوانین فعال است ✓", "success")
+            status_text = "قوانین فعال است ✓" if sys.platform == "win32" else "هدایت ایزوله فعال است ✓"
+            self.nrpt_badge.set_status(status_text, "success")
         else:
-            self.nrpt_badge.set_status("قوانین غیرفعال است", "warning")
+            self.nrpt_badge.set_status("غیرفعال است", "warning")
 
     def _test_connection(self):
         """آزمون زنده اتصال به سرور Google Cloud Code"""

@@ -20,32 +20,47 @@ from .settings_manager import (
 
 
 def is_admin() -> bool:
-    """بررسی اینکه آیا برنامه در حال حاضر با دسترسی Administrator اجرا شده است یا خیر"""
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
-        return False
+    """بررسی اینکه آیا برنامه با دسترسی Administrator (ویندوز) یا Root (لینوکس) اجرا شده است"""
+    if sys.platform == "win32":
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin() != 0
+        except Exception:
+            return False
+    else:
+        try:
+            return os.geteuid() == 0
+        except Exception:
+            return False
 
 
 def run_as_admin() -> None:
-    """درخواست ارتقا به دسترسی مدیر (UAC) و اجرای مجدد برنامه"""
+    """درخواست ارتقا به دسترسی مدیر (UAC در ویندوز یا pkexec/sudo در لینوکس) و اجرای مجدد برنامه"""
     if is_admin():
         return
 
-    # مسیر اسکریپت یا مفسر
     script = os.path.abspath(sys.argv[0])
-    params = " ".join([f'"{arg}"' for arg in sys.argv[1:]])
-    executable = sys.executable
+    params = sys.argv[1:]
 
-    ctypes.windll.shell32.ShellExecuteW(
-        None,
-        "runas",
-        executable,
-        f'"{script}" {params}',
-        None,
-        1  # SW_SHOWNORMAL
-    )
-    sys.exit(0)
+    if sys.platform == "win32":
+        param_str = " ".join([f'"{arg}"' for arg in params])
+        ctypes.windll.shell32.ShellExecuteW(
+            None,
+            "runas",
+            sys.executable,
+            f'"{script}" {param_str}',
+            None,
+            1  # SW_SHOWNORMAL
+        )
+        sys.exit(0)
+    else:
+        # در لینوکس با pkexec برای محیط گرافیکی
+        for launcher in ["pkexec", "sudo"]:
+            try:
+                cmd = [launcher, sys.executable, script] + params
+                subprocess.Popen(cmd)
+                sys.exit(0)
+            except Exception:
+                continue
 
 
 _NRPT_CACHE = None
@@ -56,20 +71,27 @@ _RELAY_CACHE_TIME = 0.0
 
 
 def check_nrpt_rules(force: bool = False) -> Tuple[bool, str]:
-    """بررسی وجود قوانین تفکیک DNS (NRPT) در ویندوز برای دامنه cloudcode-pa.googleapis.com (دارای کش)"""
+    """بررسی وضعیت قوانین تفکیک شبکه در ویندوز (NRPT) یا لینوکس"""
     global _NRPT_CACHE, _NRPT_CACHE_TIME
     now = time.time()
     if not force and _NRPT_CACHE is not None and (now - _NRPT_CACHE_TIME < 10.0):
         return _NRPT_CACHE
 
+    if sys.platform != "win32":
+        result = (True, "در لینوکس ترافیک به صورت ایزوله از طریق متغیر AG_LS_PROXY هدایت می‌شود.")
+        _NRPT_CACHE = result
+        _NRPT_CACHE_TIME = now
+        return result
+
     cmd = 'powershell -NoProfile -Command "Get-DnsClientNrptRule -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Namespace"'
     try:
+        kwargs = {"creationflags": subprocess.CREATE_NO_WINDOW} if hasattr(subprocess, "CREATE_NO_WINDOW") else {}
         res = subprocess.run(
             cmd,
             shell=True,
             capture_output=True,
             text=True,
-            creationflags=subprocess.CREATE_NO_WINDOW
+            **kwargs
         )
         output = res.stdout.lower()
         if "cloudcode-pa.googleapis.com" in output:
@@ -109,16 +131,25 @@ def is_relay_service_running(force: bool = False) -> bool:
         _RELAY_CACHE_TIME = now
         return True
 
-    # ۲. بررسی پروسه ag_dns.exe
+    # ۲. بررسی پروسه ag_dns
     try:
-        res = subprocess.run(
-            'tasklist /FI "IMAGENAME eq ag_dns.exe" /NH',
-            shell=True,
-            capture_output=True,
-            text=True,
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        running = "ag_dns.exe" in res.stdout.lower()
+        if sys.platform == "win32":
+            kwargs = {"creationflags": subprocess.CREATE_NO_WINDOW} if hasattr(subprocess, "CREATE_NO_WINDOW") else {}
+            res = subprocess.run(
+                'tasklist /FI "IMAGENAME eq ag_dns.exe" /NH',
+                shell=True,
+                capture_output=True,
+                text=True,
+                **kwargs
+            )
+            running = "ag_dns.exe" in res.stdout.lower()
+        else:
+            res = subprocess.run(
+                ["pgrep", "-f", "ag_dns"],
+                capture_output=True,
+                text=True
+            )
+            running = res.returncode == 0
     except Exception:
         running = False
 

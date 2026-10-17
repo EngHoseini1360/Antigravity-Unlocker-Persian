@@ -4,16 +4,24 @@
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any, Dict
 
 
 def get_appdata_dir() -> Path:
-    """دریافت مسیر پوشه داده‌های برنامه در LocalAppData"""
-    local_appdata = os.environ.get("LOCALAPPDATA")
-    if not local_appdata:
-        local_appdata = os.path.expanduser("~\\AppData\\Local")
-    path = Path(local_appdata) / "AGUnlocker"
+    """دریافت مسیر پوشه داده‌های برنامه بر اساس سیستم‌عامل (ویندوز یا لینوکس)"""
+    if sys.platform == "win32":
+        local_appdata = os.environ.get("LOCALAPPDATA")
+        if not local_appdata:
+            local_appdata = os.path.expanduser("~\\AppData\\Local")
+        path = Path(local_appdata) / "AGUnlocker"
+    else:
+        xdg_config = os.environ.get("XDG_CONFIG_HOME")
+        if xdg_config:
+            path = Path(xdg_config) / "AGUnlocker"
+        else:
+            path = Path.home() / ".config" / "AGUnlocker"
     path.mkdir(parents=True, exist_ok=True)
     return path
 

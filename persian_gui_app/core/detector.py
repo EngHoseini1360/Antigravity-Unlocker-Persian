@@ -3,29 +3,53 @@
 """
 
 import os
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 from .settings_manager import load_settings
 
 
 def get_standard_candidate_paths() -> List[Path]:
-    """مسیرهای متداول و استاندارد نصب Antigravity در ویندوز"""
-    local_appdata = os.environ.get("LOCALAPPDATA", "")
-    program_files = os.environ.get("ProgramFiles", "")
-    program_files_x86 = os.environ.get("ProgramFiles(x86)", "")
+    """مسیرهای متداول و استاندارد نصب Antigravity در ویندوز و لینوکس"""
+    candidates = []
+    if sys.platform == "win32":
+        local_appdata = os.environ.get("LOCALAPPDATA", "")
+        program_files = os.environ.get("ProgramFiles", "")
+        program_files_x86 = os.environ.get("ProgramFiles(x86)", "")
 
-    candidates = [
-        Path(local_appdata) / "Programs" / "Antigravity",
-        Path(local_appdata) / "Programs" / "Antigravity IDE",
-        Path(program_files) / "Antigravity",
-        Path(program_files) / "Antigravity IDE",
-        Path(program_files_x86) / "Antigravity",
-        Path(program_files_x86) / "Antigravity IDE",
-        Path(local_appdata) / "Antigravity",
-        Path(local_appdata) / "Antigravity IDE",
-        Path(local_appdata) / "agy" / "bin",
-        Path(local_appdata) / "agy",
-    ]
+        candidates.extend([
+            Path(local_appdata) / "Programs" / "Antigravity",
+            Path(local_appdata) / "Programs" / "Antigravity IDE",
+            Path(program_files) / "Antigravity",
+            Path(program_files) / "Antigravity IDE",
+            Path(program_files_x86) / "Antigravity",
+            Path(program_files_x86) / "Antigravity IDE",
+            Path(local_appdata) / "Antigravity",
+            Path(local_appdata) / "Antigravity IDE",
+            Path(local_appdata) / "agy" / "bin",
+            Path(local_appdata) / "agy",
+        ])
+    else:
+        # مسیرهای متداول توزیع‌های مختلف لینوکس (Ubuntu, Debian, Fedora, Arch, ...)
+        home = Path.home()
+        candidates.extend([
+            home / ".local" / "share" / "Antigravity",
+            home / ".local" / "share" / "antigravity",
+            home / ".local" / "share" / "Antigravity IDE",
+            home / ".local" / "share" / "antigravity-ide",
+            home / ".config" / "Antigravity",
+            home / ".config" / "Antigravity IDE",
+            Path("/opt/Antigravity"),
+            Path("/opt/antigravity"),
+            Path("/opt/Antigravity IDE"),
+            Path("/opt/antigravity-ide"),
+            Path("/usr/lib/antigravity"),
+            Path("/usr/share/antigravity"),
+            home / ".local" / "share" / "agy",
+            home / ".local" / "bin",
+            Path("/usr/local/bin"),
+            home / ".antigravity",
+        ])
     return candidates
 
 
@@ -35,7 +59,7 @@ def is_valid_install_root(path: Path) -> bool:
         return False
 
     path_str = str(path).lower()
-    if "c:\\windows" in path_str:
+    if "c:\\windows" in path_str or "/proc" in path_str or "/sys" in path_str:
         return False
 
     resources = path / "resources"
@@ -43,50 +67,51 @@ def is_valid_install_root(path: Path) -> bool:
         if (resources / "app.asar").exists() or (resources / "app").exists() or (resources / "bin").exists():
             return True
 
-    if (path / "agy.exe").is_file():
-        return True
+    for agy_name in ["agy.exe", "agy"]:
+        if (path / agy_name).is_file():
+            return True
 
-    if (path / "Antigravity.exe").is_file() or (path / "Antigravity IDE.exe").is_file() or (path / "antigravity.exe").is_file():
-        return True
+    for bin_name in ["Antigravity.exe", "Antigravity IDE.exe", "antigravity.exe", "Antigravity", "antigravity", "antigravity-ide"]:
+        if (path / bin_name).is_file():
+            return True
 
     return False
 
 
 def get_binary_targets_for_install(install_root: Path) -> List[Path]:
-    """یافتن تمام فایل‌های اجرایی باینری Language Server و CLI در پوشه نصب"""
+    """یافتن تمام فایل‌های اجرایی باینری Language Server و CLI در پوشه نصب (ویندوز و لینوکس)"""
     targets = []
     
-    # 1. agy.exe
-    agy_exe = install_root / "agy.exe"
-    if agy_exe.is_file():
-        targets.append(agy_exe)
+    # 1. agy executable
+    for agy_name in ["agy.exe", "agy"]:
+        agy_bin = install_root / agy_name
+        if agy_bin.is_file() and agy_bin not in targets:
+            targets.append(agy_bin)
 
     # 2. Desktop language server
-    desktop_bin = install_root / "resources" / "bin" / "language_server.exe"
-    if desktop_bin.is_file():
-        targets.append(desktop_bin)
-
-    # 3. IDE language server
-    ide_bin_dir = install_root / "resources" / "app" / "extensions" / "antigravity" / "bin"
-    if ide_bin_dir.is_dir():
-        for filename in ["language_server_windows_x64.exe", "language_server.exe"]:
-            candidate = ide_bin_dir / filename
+    res_bin_dir = install_root / "resources" / "bin"
+    if res_bin_dir.is_dir():
+        for filename in ["language_server.exe", "language_server", "language_server_linux_x64", "language_server_windows_x64.exe"]:
+            candidate = res_bin_dir / filename
             if candidate.is_file() and candidate not in targets:
                 targets.append(candidate)
-        # Any other language_server*.exe in ext bin dir
         try:
-            for item in ide_bin_dir.glob("language_server*.exe"):
-                if item.is_file() and not item.name.endswith(".agtmp") and item not in targets:
+            for item in res_bin_dir.glob("language_server*"):
+                if item.is_file() and not item.name.endswith((".agtmp", ".bak", ".old", ".txt", ".log")) and item not in targets:
                     targets.append(item)
         except Exception:
             pass
 
-    # 4. Any other language_server*.exe in resources\bin
-    res_bin_dir = install_root / "resources" / "bin"
-    if res_bin_dir.is_dir():
+    # 3. IDE language server
+    ide_bin_dir = install_root / "resources" / "app" / "extensions" / "antigravity" / "bin"
+    if ide_bin_dir.is_dir():
+        for filename in ["language_server_windows_x64.exe", "language_server.exe", "language_server_linux_x64", "language_server"]:
+            candidate = ide_bin_dir / filename
+            if candidate.is_file() and candidate not in targets:
+                targets.append(candidate)
         try:
-            for item in res_bin_dir.glob("language_server*.exe"):
-                if item.is_file() and not item.name.endswith(".agtmp") and item not in targets:
+            for item in ide_bin_dir.glob("language_server*"):
+                if item.is_file() and not item.name.endswith((".agtmp", ".bak", ".old", ".txt", ".log")) and item not in targets:
                     targets.append(item)
         except Exception:
             pass
@@ -97,9 +122,9 @@ def get_binary_targets_for_install(install_root: Path) -> List[Path]:
 def identify_install_label(install_root: Path) -> str:
     """تعیین نام و عنوان مناسب برای برنامه نصب شده"""
     name_lower = install_root.name.lower()
-    if "ide" in name_lower or (install_root / "Antigravity IDE.exe").is_file():
+    if "ide" in name_lower or (install_root / "Antigravity IDE.exe").is_file() or (install_root / "antigravity-ide").is_file():
         return "محیط توسعه Antigravity IDE"
-    elif "agy" in name_lower or (install_root / "agy.exe").is_file():
+    elif "agy" in name_lower or (install_root / "agy.exe").is_file() or (install_root / "agy").is_file():
         return "خط فرمان Antigravity CLI (agy)"
     else:
         return "نرم‌افزار دسکتاپ Antigravity 2.0"

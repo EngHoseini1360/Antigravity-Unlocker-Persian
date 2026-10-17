@@ -18,19 +18,30 @@ SIG_PROXY_PATCHED   = b"AG_LS_PROXY"     # طول: ۱۱ بایت
 
 
 def kill_holding_processes(file_name: str = "") -> None:
-    """بستن فرآیندهایی که ممکن است فایل اجرایی را قفل کرده باشند"""
-    procs_to_kill = ["language_server.exe", "language_server_windows_x64.exe", "agy.exe"]
+    """بستن فرآیندهایی که ممکن است فایل اجرایی را قفل کرده باشند (ویندوز یا لینوکس)"""
+    procs_to_kill = [
+        "language_server.exe", "language_server_windows_x64.exe", "agy.exe",
+        "language_server", "language_server_linux_x64", "agy"
+    ]
     if file_name and file_name not in procs_to_kill:
         procs_to_kill.append(file_name)
 
     for proc in procs_to_kill:
         try:
-            subprocess.run(
-                ["taskkill", "/F", "/IM", proc],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
+            if sys.platform == "win32":
+                kwargs = {"creationflags": subprocess.CREATE_NO_WINDOW} if hasattr(subprocess, "CREATE_NO_WINDOW") else {}
+                subprocess.run(
+                    ["taskkill", "/F", "/IM", proc],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    **kwargs
+                )
+            else:
+                subprocess.run(
+                    ["pkill", "-9", "-f", proc],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
         except Exception:
             pass
     time.sleep(0.5)

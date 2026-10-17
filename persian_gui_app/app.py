@@ -73,7 +73,7 @@ class MainWindow(QMainWindow):
         candidates = [
             Path(__file__).parent.parent / "icon.ico",
             Path(__file__).parent / "icon.ico",
-            Path(r"H:\Project\Antigravity-2.24.0\Antigravity-2.24.0\icon.ico"),
+            Path.cwd() / "icon.ico",
         ]
         for p in candidates:
             if p.exists():
@@ -124,9 +124,12 @@ class MainWindow(QMainWindow):
         top_layout.addWidget(dev_lbl)
 
         # دکمه بررسی دسترسی ادمین
+        is_win = sys.platform == "win32"
         if not is_admin():
-            self.btn_admin = QPushButton("🛡️ اجرا با دسترسی Administrator")
-            self.btn_admin.setToolTip("برای فعال‌سازی کامل قوانین DNS NRPT ویندوز به دسترسی مدیر نیاز است.")
+            btn_title = "🛡️ اجرا با دسترسی Administrator" if is_win else "🛡️ اجرا با دسترسی Root / Admin"
+            tip_title = "برای اعمال قوانین DNS به دسترسی ادمین نیاز است." if is_win else "برای دسترسی کامل به فایل‌های سیستمی ممکن است به دسترسی root نیاز باشد."
+            self.btn_admin = QPushButton(btn_title)
+            self.btn_admin.setToolTip(tip_title)
             self.btn_admin.setStyleSheet("""
                 QPushButton {
                     background-color: #f59e0b;
@@ -144,7 +147,8 @@ class MainWindow(QMainWindow):
             self.btn_admin.clicked.connect(self._restart_as_admin)
             top_layout.addWidget(self.btn_admin)
         else:
-            admin_lbl = QLabel("🛡️ دسترسی ادمین فعال است ✓")
+            admin_text = "🛡️ دسترسی ادمین فعال است ✓" if is_win else "🛡️ دسترسی روت (Root) فعال است ✓"
+            admin_lbl = QLabel(admin_text)
             admin_lbl.setStyleSheet("color: #10b981; font-weight: bold; font-size: 13px; padding: 6px 12px;")
             top_layout.addWidget(admin_lbl)
 

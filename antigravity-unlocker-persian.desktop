@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Antigravity Unlocker (نسخه فارسی)
+Comment=ابزار رفع تحریم و فعال‌سازی هوش مصنوعی گوگل برای Antigravity و Antigravity IDE
+Exec=python3 persian_gui_app/main.py
+Icon=icon.ico
+Terminal=false
+Categories=Development;Utility;
+Keywords=antigravity;google;ai;unlock;persian;

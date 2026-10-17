@@ -3,6 +3,7 @@
 """
 
 import os
+import subprocess
 from pathlib import Path
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -156,7 +157,13 @@ class InstallCard(QFrame):
     def _open_in_explorer(self):
         path = self.install_data["path"]
         if os.path.exists(path):
-            os.startfile(path)
+            if hasattr(os, "startfile"):
+                os.startfile(path)
+            else:
+                try:
+                    subprocess.Popen(["xdg-open", path])
+                except Exception:
+                    pass
 
     def _patch_binary(self, b_path: str):
         ok, msg = patch_binary_file(b_path)
