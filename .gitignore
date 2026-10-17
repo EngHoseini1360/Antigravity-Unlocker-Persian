@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.spec
+build/
+dist/
+*.exe
+*.zip
+
+
+# Rust
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Environment & Cache
+.venv/
+env/
+venv/
+.uv/
+
+# OS specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
