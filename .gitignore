@@ -7,6 +7,7 @@ build/
 dist/
 *.exe
 *.zip
+*.apk
 
 
 # Rust
