@@ -271,10 +271,19 @@ class DashboardTab(QWidget):
 
     def on_enable_all_clicked(self):
 
-        """اجرای عملیات پچ همگانی و فعال‌سازی تنظیمات"""
         installs = scan_all_installs()
         if not installs:
-            QMessageBox.warning(self, "خطا", "هیچ نسخه نصب شده‌ای از Antigravity در سیستم یافت نشد.")
+            reply = QMessageBox.question(
+                self,
+                "یافت نشدن خودکار مسیر نصب",
+                "هیچ نسخه نصب‌شده‌ای از Antigravity در مسیرهای استاندارد سیستم شناسایی نشد.\n\n"
+                "آیا مایلید پوشه نصب یا فایل باینری Antigravity (مانند language_server یا agy) را به صورت دستی انتخاب نمایید؟",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                if hasattr(self.parent_window, "tabs") and hasattr(self.parent_window, "tab_installs"):
+                    self.parent_window.tabs.setCurrentWidget(self.parent_window.tab_installs)
+                    self.parent_window.tab_installs._add_manual_folder()
             return
 
         success_count = 0

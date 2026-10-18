@@ -206,10 +206,15 @@ class InstallsTab(QWidget):
         top_bar.addWidget(title_lbl)
         top_bar.addStretch()
 
-        btn_add_manual = QPushButton("➕ افزودن پوشه نصب دستی")
-        btn_add_manual.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_add_manual.clicked.connect(self._add_manual_folder)
-        top_bar.addWidget(btn_add_manual)
+        btn_add_folder = QPushButton("📁 افزودن پوشه نصب")
+        btn_add_folder.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_add_folder.clicked.connect(self._add_manual_folder)
+        top_bar.addWidget(btn_add_folder)
+
+        btn_add_file = QPushButton("📄 افزودن مستقیم فایل (language_server)")
+        btn_add_file.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_add_file.clicked.connect(self._add_manual_file)
+        top_bar.addWidget(btn_add_file)
 
         btn_rescan = QPushButton("🔄 اسکن دوباره سیستم")
         btn_rescan.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -245,7 +250,10 @@ class InstallsTab(QWidget):
         installs = scan_all_installs()
         if not installs:
             empty_card = CardWidget("نصبی یافت نشد", "هیچ پوشه‌ای از Antigravity در مسیرهای استاندارد پیدا نشد.", "⚠️")
-            lbl = QLabel("اگر Antigravity در مسیر دیگری نصب شده است، دکمه «افزودن پوشه نصب دستی» در بالا را بزنید.")
+            lbl = QLabel(
+                "اگر Antigravity یا Language Server را در پوشه دیگری (مانند ترموکس، پوشه دانلود یا دایرکتوری خانگی) قرار داده‌اید،\n"
+                "می‌توانید با دکمه «📁 افزودن پوشه نصب» یا «📄 افزودن مستقیم فایل» مسیر آن را مشخص نمایید."
+            )
             lbl.setStyleSheet("color: #94a3b8; font-size: 13px;")
             empty_card.add_widget(lbl)
             self.cards_layout.addWidget(empty_card)
@@ -260,7 +268,6 @@ class InstallsTab(QWidget):
         self.installs_changed.emit()
 
     def _add_manual_folder(self):
-
         """انتخاب پوشه سفارشی توسط کاربر"""
         folder = QFileDialog.getExistingDirectory(self, "انتخاب پوشه نصب Antigravity")
         if not folder:
@@ -271,7 +278,7 @@ class InstallsTab(QWidget):
             reply = QMessageBox.question(
                 self,
                 "تأیید مسیر",
-                "در این پوشه فایل اجرایی استاندارد یا پوشه resources پیدا نشد. آیا مطمئنید می‌خواهید این مسیر را اضافه کنید؟",
+                "در این پوشه فایل اجرایی با نام استاندارد پیدا نشد. آیا همچنان مایلید این مسیر به لیست اضافه شود؟",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             if reply != QMessageBox.StandardButton.Yes:
@@ -285,5 +292,30 @@ class InstallsTab(QWidget):
             save_settings(settings)
             QMessageBox.information(self, "ثبت شد", "مسیر مورد نظر به لیست اسکن افزوده شد.")
             self.reload_installs()
+            self.installs_changed.emit()
         else:
             QMessageBox.information(self, "موجود است", "این مسیر از قبل در لیست وجود دارد.")
+
+    def _add_manual_file(self):
+        """انتخاب مستقیم فایل باینری (مانند language_server یا agy) توسط کاربر"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "انتخاب مستقیم فایل باینری Antigravity (language_server یا agy)",
+            "",
+            "تمام فایل‌ها (*);;باینری‌های اجرایی (language_server* agy* *.exe)"
+        )
+        if not file_path:
+            return
+
+        fp = Path(file_path)
+        settings = load_settings()
+        manual_paths = settings.get("manual_paths", [])
+        if str(fp) not in manual_paths:
+            manual_paths.append(str(fp))
+            settings["manual_paths"] = manual_paths
+            save_settings(settings)
+            QMessageBox.information(self, "ثبت شد", f"فایل باینری {fp.name} به لیست اضافه شد.")
+            self.reload_installs()
+            self.installs_changed.emit()
+        else:
+            QMessageBox.information(self, "موجود است", "این فایل از قبل در لیست وجود دارد.")
